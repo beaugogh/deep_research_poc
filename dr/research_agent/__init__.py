@@ -2,20 +2,24 @@ from pathlib import Path
 import json
 from agent import Agent
 from state import State, Role
-from utils import get_today_str, load_prompt
+from utils import get_today_str, load_prompt, render_tools_for_prompt
 from backend import call_llm
 from tools import call_tool, parse_tool_calls
 
 MAX_TOOL_CALLS = 3
+
 
 class ResearchAgent(Agent):
 
     def __init__(self, state: State):
         super().__init__(state)
         today = get_today_str()
-        self.system_prompt = load_prompt(self.cur_dir / "prompt.txt", date=today)
+        tools_txt = render_tools_for_prompt(self.context_path / "tools.json")
+        system_prompt = load_prompt(
+            self.context_path / "prompt.txt", date=today, tools=tools_txt
+        )
         self.dialog = state["dialog"]
-        self.dialog.add_message(role=Role.SYSTEM, content=self.system_prompt)
+        self.dialog.add_message(role=Role.SYSTEM, content=system_prompt)
 
     def run(self):
         messages = self.dialog.to_messages()
@@ -40,7 +44,7 @@ class ResearchAgent(Agent):
                 # think_tool does NOT count toward limit
                 if tool_name == "think_tool":
                     continue
-                
+
                 # real tool calls → check budget
                 if self.state["tool_call_iterations"] >= MAX_TOOL_CALLS:
                     # Stop tool loop cleanly
@@ -51,7 +55,7 @@ class ResearchAgent(Agent):
                     self.dialog.add_message(role=Role.ASSISTANT, content=final_msg)
                     yield final_msg
                     return
-                
+
                 # execute tool call
                 tool_result = call_tool(tc)
                 self.state["tool_call_iterations"] += 1
