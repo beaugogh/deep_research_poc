@@ -20,10 +20,6 @@ def call_tool(input_dict: dict):
     return tool_fn(**arguments)
 
 
-class ToolParseError(ValueError):
-    pass
-
-
 def parse_tool_calls(llm_output: str, *, strict: bool = False) -> List[Dict]:
     """
     Parse tool calls from an LLM output.
